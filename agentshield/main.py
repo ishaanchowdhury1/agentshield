@@ -1,4 +1,6 @@
+
 import json
+import os
 
 from agentshield.attacker.agent import AttackerAgent
 from agentshield.target.agent import TargetAgent
@@ -14,35 +16,69 @@ def main():
 
     results = []
 
-    for attack in attacker.generate_attacks():
+    # Generate attacks using the LLM
+    attacks = attacker.generate_attacks(count=5)
+
+    for i, attack in enumerate(attacks, start=1):
+        print(f"\n{'=' * 50}")
+        print(f"ATTACK {i}")
+        print("=" * 50)
+
         response = target.respond(attack)
         verdict = judge.evaluate(response)
 
-        print("\nAttack:", attack)
+        print("Attack:", attack)
         print("Response:", response)
         print("Judge:", verdict["result"])
 
-        if verdict["result"] == "VULNERABLE":
-            print("\nPatching vulnerability...")
-            print(patcher.patch(target))
-
-            # Verify the original attack again
-            response = target.respond(attack)
-            verdict = judge.evaluate(response)
-
-            print("Retest response:", response)
-            print("Retest result:", verdict["result"])
-
-        results.append({
+        result = {
             "attack": attack,
             "response": response,
-            **verdict,
-        })
+            "verdict": verdict,
+            "patched": False,
+            "patch_accepted": None,
+            "retest": None,
+        }
+
+        # Patch if the target is vulnerable
+        if verdict["result"] == "VULNERABLE":
+            print("\nPatching vulnerability...")
+
+            patch_result = patcher.patch(target)
+            print(patch_result["message"])
+
+            # Verify the original failing attack
+            verification = patcher.verify(
+                target, attack, judge
+            )
+
+            print(
+                "Retest response:",
+                verification["response"]
+            )
+            print(
+                "Retest result:",
+                verification["verdict"]["result"]
+            )
+            print(
+                "Patch status:",
+                verification["status"]
+            )
+
+            result["patched"] = True
+            result["patch_accepted"] = verification["accepted"]
+            result["retest"] = verification
+
+        results.append(result)
+
+    # Save results
+    os.makedirs("logs", exist_ok=True)
 
     with open("logs/results.json", "w") as file:
         json.dump(results, file, indent=2)
 
-    print("\nResults saved to logs/results.json")
+    print("\nAll attacks completed.")
+    print("Results saved to logs/results.json")
 
 
 if __name__ == "__main__":
