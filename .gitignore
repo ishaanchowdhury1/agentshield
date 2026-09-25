@@ -4,3 +4,19 @@ __pycache__/
 .env
 logs/*.json
 .DS_Store
+# Secrets
+.env
+.env.*
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/

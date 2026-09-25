@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+testpaths = ["agentshield/tests"]
+
+markers = [
+    "live: tests that call the real Groq API",
+]
