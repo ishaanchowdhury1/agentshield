@@ -1,5 +1,5 @@
-
 import json
+import re
 from groq import Groq
 from dotenv import load_dotenv
 
@@ -14,7 +14,7 @@ class AttackerAgent:
     def generate_attacks(self, previous_attacks=None, count=5):
         previous_attacks = previous_attacks or []
         attacks = []
-        max_attempts = 3
+        max_attempts = 5
 
         for attempt in range(max_attempts):
             remaining = count - len(attacks)
@@ -71,13 +71,25 @@ Return ONLY a JSON array of strings.
                 max_tokens=1200,
             )
 
-            content = response.choices[0].message.content
+            content = response.choices[0].message.content or ""
+            cleaned = content.strip()
+
+            # Clean markdown code blocks if present
+            if "```" in cleaned:
+                cleaned = re.sub(r"```(?:json)?", "", cleaned).strip()
+
+            # Extract raw array substring if extra preamble exists
+            start_idx = cleaned.find("[")
+            end_idx = cleaned.rfind("]")
+            if start_idx != -1 and end_idx != -1 and start_idx < end_idx:
+                cleaned = cleaned[start_idx : end_idx + 1]
 
             try:
-                generated = json.loads(content)
+                generated = json.loads(cleaned)
             except (json.JSONDecodeError, TypeError):
                 print(
-                    f"Attempt {attempt + 1}: invalid JSON. Retrying."
+                    f"Attempt {attempt + 1}: invalid JSON format. "
+                    f"Raw response preview: {repr(content[:100])}. Retrying."
                 )
                 continue
 
@@ -115,7 +127,6 @@ Return ONLY a JSON array of strings.
             )
 
         return attacks[:count]
-
 
     def classify_attack(self, attack):
         text = attack.lower()
