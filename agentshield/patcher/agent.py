@@ -1,5 +1,5 @@
-
 import json
+import re
 
 from groq import Groq
 from dotenv import load_dotenv
@@ -74,11 +74,23 @@ Return ONLY a JSON object:
             max_tokens=600,
         )
 
-        content = result.choices[0].message.content
+        content = result.choices[0].message.content or ""
+        cleaned = content.strip()
+
+        # Clean markdown code blocks if present
+        if "```" in cleaned:
+            cleaned = re.sub(r"```(?:json)?", "", cleaned).strip()
+
+        # Extract raw object substring if preamble exists
+        start_idx = cleaned.find("{")
+        end_idx = cleaned.rfind("}")
+        if start_idx != -1 and end_idx != -1 and start_idx < end_idx:
+            cleaned = cleaned[start_idx : end_idx + 1]
 
         try:
-            candidate = json.loads(content)
+            candidate = json.loads(cleaned)
         except (json.JSONDecodeError, TypeError):
+            print(f"Patcher raw output preview: {repr(content[:100])}")
             raise ValueError("Patcher returned invalid JSON.")
 
         new_guardrail = candidate.get("guardrail")
