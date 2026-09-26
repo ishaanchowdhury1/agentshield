@@ -115,3 +115,21 @@ Return ONLY a JSON array of strings.
             )
 
         return attacks[:count]
+
+
+    def classify_attack(self, attack):
+        text = attack.lower()
+
+        if any(word in text for word in ["translate", "translation"]):
+            return "Translation"
+
+        if any(word in text for word in ["summarize", "summary"]):
+            return "Summarization"
+
+        if any(word in text for word in ["pretend", "roleplay", "act as"]):
+            return "Roleplay"
+
+        if any(word in text for word in ["ignore", "override", "system prompt"]):
+            return "Instruction Override"
+
+        return "Indirect Request"
